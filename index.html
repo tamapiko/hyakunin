@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>百人一首取り札表示</title>
+    <title>百人一首練習システム</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
-            background-color: #f9f9f9;
+            font-family: "Yu Mincho", serif;
+            background-color: #fbeec1;
             margin: 0;
             padding: 0;
             display: flex;
@@ -19,30 +19,27 @@
         .container {
             text-align: center;
             padding: 20px;
-            max-width: 800px;
+            max-width: 900px;
             width: 100%;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            background: white;
-            border-radius: 10px;
+            background: #fff8e5;
+            border: 3px solid #c19a6b;
+            border-radius: 15px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
             margin-top: 20px;
         }
 
         h1 {
             margin-bottom: 20px;
-            color: #333;
+            color: #8b4513;
         }
 
         .settings {
             margin-bottom: 20px;
+            font-size: 1.1em;
         }
 
-        label {
+        label, select, button, input {
             margin-right: 10px;
-        }
-
-        select, button {
-            margin-right: 10px;
-            padding: 5px;
             font-size: 1em;
         }
 
@@ -50,14 +47,14 @@
             padding: 10px 20px;
             font-size: 1.2em;
             color: white;
-            background-color: #007BFF;
+            background-color: #8b0000;
             border: none;
             border-radius: 5px;
             cursor: pointer;
         }
 
         #start-button:hover {
-            background-color: #0056b3;
+            background-color: #a52a2a;
         }
 
         #card-container {
@@ -68,20 +65,32 @@
         }
 
         .card {
-            background: #eef;
-            padding: 10px;
-            border: 1px solid #aaa;
-            border-radius: 5px;
+            background: #fff8e5;
+            padding: 15px;
+            border: 2px solid #c19a6b;
+            border-radius: 10px;
             text-align: center;
-            font-size: 0.9em;
+            font-size: 1em;
+            color: #8b4513;
+            cursor: pointer;
             font-weight: bold;
-            color: #333;
+        }
+
+        .card:hover {
+            background: #f0e68c;
+        }
+
+        .result {
+            margin-top: 20px;
+            font-size: 1.2em;
+            color: #8b4513;
+            font-weight: bold;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>百人一首取り札表示システム</h1>
+        <h1>百人一首練習システム</h1>
         <div class="settings">
             <label for="rows">行数:</label>
             <select id="rows">
@@ -95,53 +104,90 @@
                 <option value="4">4列</option>
                 <option value="5">5列</option>
             </select>
+            <label for="kimariji">決まり字:</label>
+            <select id="kimariji">
+                <option value="1">1文字</option>
+                <option value="2">2文字</option>
+                <option value="3">3文字</option>
+                <option value="4">4文字</option>
+                <option value="5">5文字</option>
+                <option value="6">6文字</option>
+            </select>
         </div>
         <button id="start-button">スタート</button>
         <div id="card-container"></div>
+        <div class="result" id="result"></div>
     </div>
 
     <script>
-        // 百人一首APIエンドポイント
+        // 百人一首API
         const API_URL = "https://api.aoikujira.com/hyakunin/get2.php?fmt=json";
 
         // HTML要素の取得
         const rowsSelect = document.getElementById("rows");
         const colsSelect = document.getElementById("cols");
+        const kimarijiSelect = document.getElementById("kimariji");
         const startButton = document.getElementById("start-button");
         const cardContainer = document.getElementById("card-container");
+        const resultDisplay = document.getElementById("result");
 
-        // 百人一首データを取得
+        let correctCard = null;
+
+        // 百人一首データ取得
         async function fetchHyakuninIsshu() {
             try {
                 const response = await fetch(API_URL);
                 const data = await response.json();
-                return data.map(item => `${item.id}. ${item.kami} ${item.shimo}`);
+                return data;
             } catch (error) {
                 console.error("データの取得に失敗しました:", error);
                 return [];
             }
         }
 
-        // 取り札表示関数
+        // 読み上げ機能
+        function playAudio(text) {
+            const speech = new SpeechSynthesisUtterance();
+            speech.lang = "ja-JP";
+            speech.text = text;
+            speech.rate = 0.8; // 読み上げ速度
+            window.speechSynthesis.speak(speech);
+        }
+
+        // 取り札表示
         async function displayCards() {
-            const cards = await fetchHyakuninIsshu();
+            const data = await fetchHyakuninIsshu();
             const rows = parseInt(rowsSelect.value, 10);
             const cols = parseInt(colsSelect.value, 10);
             const totalCards = rows * cols;
 
             // 表示領域をクリア
             cardContainer.innerHTML = "";
+            resultDisplay.textContent = "";
 
             // グリッドスタイルを設定
             cardContainer.style.gridTemplateRows = `repeat(${rows}, auto)`;
             cardContainer.style.gridTemplateColumns = `repeat(${cols}, auto)`;
 
-            // ランダムに札を選択して表示
-            const shuffledCards = cards.sort(() => 0.5 - Math.random()).slice(0, totalCards);
+            // ランダムに札を選択
+            const shuffledCards = data.sort(() => 0.5 - Math.random()).slice(0, totalCards);
+            correctCard = shuffledCards[0];
+
+            // 読み上げ
+            const kimariji = parseInt(kimarijiSelect.value, 10);
+            playAudio(correctCard.kami.slice(0, kimariji));
+
             shuffledCards.forEach((card) => {
                 const cardElement = document.createElement("div");
                 cardElement.className = "card";
-                cardElement.textContent = card;
+                cardElement.textContent = `${card.kami} ${card.shimo}`;
+                cardElement.addEventListener("click", () => {
+                    if (card.id === correctCard.id) {
+                        resultDisplay.textContent = "正解です！";
+                    } else {
+                        resultDisplay.textContent = "不正解です。もう一度挑戦してください！";
+                    }
+                });
                 cardContainer.appendChild(cardElement);
             });
         }
