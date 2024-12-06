@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>百人一首取り札表示</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f9f9f9;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .container {
+            text-align: center;
+            padding: 20px;
+            max-width: 800px;
+            width: 100%;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            background: white;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .settings {
+            margin-bottom: 20px;
+        }
+
+        label {
+            margin-right: 10px;
+        }
+
+        select, button {
+            margin-right: 10px;
+            padding: 5px;
+            font-size: 1em;
+        }
+
+        #start-button {
+            padding: 10px 20px;
+            font-size: 1.2em;
+            color: white;
+            background-color: #007BFF;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        #start-button:hover {
+            background-color: #0056b3;
+        }
+
+        #card-container {
+            display: grid;
+            gap: 10px;
+            margin-top: 20px;
+            justify-content: center;
+        }
+
+        .card {
+            background: #eef;
+            padding: 10px;
+            border: 1px solid #aaa;
+            border-radius: 5px;
+            text-align: center;
+            font-size: 0.9em;
+            font-weight: bold;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>百人一首取り札表示システム</h1>
+        <div class="settings">
+            <label for="rows">行数:</label>
+            <select id="rows">
+                <option value="3">3行</option>
+                <option value="4">4行</option>
+                <option value="5">5行</option>
+            </select>
+            <label for="cols">列数:</label>
+            <select id="cols">
+                <option value="3">3列</option>
+                <option value="4">4列</option>
+                <option value="5">5列</option>
+            </select>
+        </div>
+        <button id="start-button">スタート</button>
+        <div id="card-container"></div>
+    </div>
+
+    <script>
+        // 百人一首APIエンドポイント
+        const API_URL = "https://api.aoikujira.com/hyakunin/get2.php?fmt=json";
+
+        // HTML要素の取得
+        const rowsSelect = document.getElementById("rows");
+        const colsSelect = document.getElementById("cols");
+        const startButton = document.getElementById("start-button");
+        const cardContainer = document.getElementById("card-container");
+
+        // 百人一首データを取得
+        async function fetchHyakuninIsshu() {
+            try {
+                const response = await fetch(API_URL);
+                const data = await response.json();
+                return data.map(item => `${item.id}. ${item.kami} ${item.shimo}`);
+            } catch (error) {
+                console.error("データの取得に失敗しました:", error);
+                return [];
+            }
+        }
+
+        // 取り札表示関数
+        async function displayCards() {
+            const cards = await fetchHyakuninIsshu();
+            const rows = parseInt(rowsSelect.value, 10);
+            const cols = parseInt(colsSelect.value, 10);
+            const totalCards = rows * cols;
+
+            // 表示領域をクリア
+            cardContainer.innerHTML = "";
+
+            // グリッドスタイルを設定
+            cardContainer.style.gridTemplateRows = `repeat(${rows}, auto)`;
+            cardContainer.style.gridTemplateColumns = `repeat(${cols}, auto)`;
+
+            // ランダムに札を選択して表示
+            const shuffledCards = cards.sort(() => 0.5 - Math.random()).slice(0, totalCards);
+            shuffledCards.forEach((card) => {
+                const cardElement = document.createElement("div");
+                cardElement.className = "card";
+                cardElement.textContent = card;
+                cardContainer.appendChild(cardElement);
+            });
+        }
+
+        // スタートボタンのクリックイベント
+        startButton.addEventListener("click", displayCards);
+    </script>
+</body>
+</html>
