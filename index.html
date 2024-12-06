@@ -86,6 +86,11 @@
             color: #8b4513;
             font-weight: bold;
         }
+
+        .timer {
+            font-size: 1.5em;
+            color: red;
+        }
     </style>
 </head>
 <body>
@@ -106,6 +111,7 @@
             </select>
             <label for="kimariji">決まり字:</label>
             <select id="kimariji">
+                <option value="指定なし">指定なし</option>
                 <option value="1">1文字</option>
                 <option value="2">2文字</option>
                 <option value="3">3文字</option>
@@ -115,6 +121,7 @@
             </select>
         </div>
         <button id="start-button">スタート</button>
+        <div id="timer" class="timer"></div>
         <div id="card-container"></div>
         <div class="result" id="result"></div>
     </div>
@@ -130,8 +137,10 @@
         const startButton = document.getElementById("start-button");
         const cardContainer = document.getElementById("card-container");
         const resultDisplay = document.getElementById("result");
+        const timerDisplay = document.getElementById("timer");
 
         let correctCard = null;
+        let timerInterval = null;
 
         // 百人一首データ取得
         async function fetchHyakuninIsshu() {
@@ -154,6 +163,20 @@
             window.speechSynthesis.speak(speech);
         }
 
+        // タイマーの開始
+        function startTimer(duration, callback) {
+            let timeLeft = duration;
+            timerDisplay.textContent = `覚える時間: ${timeLeft}秒`;
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                timerDisplay.textContent = `覚える時間: ${timeLeft}秒`;
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    callback();
+                }
+            }, 1000);
+        }
+
         // 取り札表示
         async function displayCards() {
             const data = await fetchHyakuninIsshu();
@@ -164,20 +187,37 @@
             // 表示領域をクリア
             cardContainer.innerHTML = "";
             resultDisplay.textContent = "";
+            timerDisplay.textContent = "";
 
             // グリッドスタイルを設定
             cardContainer.style.gridTemplateRows = `repeat(${rows}, auto)`;
             cardContainer.style.gridTemplateColumns = `repeat(${cols}, auto)`;
 
             // ランダムに札を選択
-            const shuffledCards = data.sort(() => 0.5 - Math.random()).slice(0, totalCards);
-            correctCard = shuffledCards[0];
+            let selectedCards = [];
+            const kimariji = kimarijiSelect.value === '指定なし' ? [1, 2, 3, 4, 5, 6] : [parseInt(kimarijiSelect.value, 10)];
 
-            // 読み上げ
-            const kimariji = parseInt(kimarijiSelect.value, 10);
-            playAudio(correctCard.kami.slice(0, kimariji));
+            // 決まり字ごとにカードを選ぶ
+            kimariji.forEach(k => {
+                const matchingCards = data.filter(card => card.kami.slice(0, k).length === k);
+                selectedCards = selectedCards.concat(matchingCards);
+            });
 
-            shuffledCards.forEach((card) => {
+            selectedCards = selectedCards.slice(0, totalCards);  // 限られたカード数に調整
+            correctCard = selectedCards[0];  // 最初に出すカード
+
+            // 覚える時間
+            startTimer(10, () => {
+                // 覚える時間が終わったらカードをランダムに表示
+                showCards(selectedCards);
+            });
+        }
+
+        // ランダムにカードを表示
+        function showCards(cards) {
+            cardContainer.innerHTML = "";  // カードをリセット
+
+            cards.forEach((card) => {
                 const cardElement = document.createElement("div");
                 cardElement.className = "card";
                 cardElement.textContent = `${card.kami} ${card.shimo}`;
@@ -187,9 +227,14 @@
                     } else {
                         resultDisplay.textContent = "不正解です。もう一度挑戦してください！";
                     }
+
+                    // 次のカードをランダムに選んで表示
+                    displayCards();
                 });
                 cardContainer.appendChild(cardElement);
             });
+            // 読み札の読み上げ
+            playAudio(correctCard.kami.slice(0, kimarijiSelect.value === '指定なし' ? 1 : parseInt(kimarijiSelect.value, 10)));
         }
 
         // スタートボタンのクリックイベント
